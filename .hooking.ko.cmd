@@ -1,0 +1,1 @@
+cmd_/home/feather/student/licenta/syscall_hooking/hooking.ko := ld -r  -m elf_x86_64 -z noexecstack   --build-id=sha1  -T scripts/module.lds -o /home/feather/student/licenta/syscall_hooking/hooking.ko /home/feather/student/licenta/syscall_hooking/hooking.o /home/feather/student/licenta/syscall_hooking/hooking.mod.o;  true

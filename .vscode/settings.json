@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "stat.h": "c",
+        "functional": "c",
+        "typeinfo": "c",
+        "fs.h": "c",
+        "array": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "utility": "c",
+        "string": "c"
+    }
+}

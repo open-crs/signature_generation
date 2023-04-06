@@ -1,0 +1,1 @@
+cmd_/home/feather/student/licenta/syscall_hooking/Module.symvers := sed 's/\.ko$$/\.o/' /home/feather/student/licenta/syscall_hooking/modules.order | scripts/mod/modpost -m -a  -o /home/feather/student/licenta/syscall_hooking/Module.symvers -e -i Module.symvers   -T -
