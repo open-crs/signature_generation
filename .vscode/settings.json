@@ -8,6 +8,9 @@
         "string_view": "c",
         "initializer_list": "c",
         "utility": "c",
-        "string": "c"
+        "string": "c",
+        "netlink.h": "c",
+        "const.h": "c",
+        "socket.h": "c"
     }
 }

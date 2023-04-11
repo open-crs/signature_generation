@@ -18,11 +18,54 @@
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 #include <linux/fs_struct.h>
-// #include "namei/namei.h"
+#include <linux/netlink.h>
+#include <linux/skbuff.h>
+#include <net/sock.h>
 
 MODULE_DESCRIPTION("System call hooking to protect a process from exploit attempts");
 MODULE_AUTHOR("Stefan Pana <stefanpana00@gmail.com>");
 MODULE_LICENSE("GPL");
+
+#define NETLINK_TEST 17
+static struct sock *socketptr = NULL;
+int PID = -1;
+
+static void nl_recv_msg(struct sk_buff *skb) {
+    struct nlmsghdr *nlh = NULL;
+    if (skb == NULL) {
+        printk("skb is NULL\n");
+        return ;
+    }
+
+    nlh = (struct nlmsghdr *)skb->data;
+	PID = nlh->nlmsg_pid;
+
+    printk(KERN_INFO "%s: received netlink message payload: %s\nPID: %d\n", __FUNCTION__, NLMSG_DATA(nlh), PID);
+
+
+	// SEND MESSAGE TO USER SPACE
+	char *msg = "Hello msg from kernel";
+	int msg_size = strlen(msg);
+	struct sk_buff *skb_out = nlmsg_new(msg_size, 0);    //nlmsg_new - Allocate a new netlink message: skb_out
+
+    if (!skb_out) {
+        printk(KERN_ERR "Failed to allocate new skb\n");
+        return;
+    }
+
+    nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);   // Add a new netlink message to an skb
+    NETLINK_CB(skb_out).dst_group = 0;                  
+    strncpy(nlmsg_data(nlh), msg, msg_size); //char *strncpy(char *dest, const char *src, size_t count)
+    int res = nlmsg_unicast(socketptr, skb_out, PID); 
+
+    if (res < 0) {
+        printk(KERN_INFO "Error while sending back to user\n");
+	}
+}
+
+struct netlink_kernel_cfg cfg = {
+    .input = nl_recv_msg,
+};
 
 unsigned int target_fd = 0;
 unsigned int target_pid = 0;
@@ -498,6 +541,13 @@ static int fh_init(void) {
 		return err;
 	}
 
+	pr_info("Initializing Netlink Socket\n");
+    socketptr = netlink_kernel_create(&init_net, NETLINK_TEST, &cfg);
+	if (!socketptr) {
+		pr_info("Error creating socket.\n");
+		return 0;
+	}
+
 	pr_info("module loaded\n");
 
 	return 0;
@@ -506,6 +556,7 @@ module_init(fh_init);
 
 static void fh_exit(void) {
 	fh_remove_hooks(syscall_hooks, ARRAY_SIZE(syscall_hooks));
+	sock_release(socketptr->sk_socket);
 
 	pr_info("module unloaded\n");
 }

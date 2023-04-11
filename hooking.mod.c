@@ -28,6 +28,9 @@ MODULE_INFO(retpoline, "Y");
 static const struct modversion_info ____versions[]
 __used __section("__versions") = {
 	{ 0x32e21920, "module_layout" },
+	{ 0xe2c7e7f, "sock_release" },
+	{ 0x968100e0, "__netlink_kernel_create" },
+	{ 0xb014a89f, "init_net" },
 	{ 0xa5a1793e, "unregister_ftrace_function" },
 	{ 0x837b7b09, "__dynamic_pr_debug" },
 	{ 0x90de72a9, "register_ftrace_function" },
@@ -36,6 +39,9 @@ __used __section("__versions") = {
 	{ 0xb3378a7b, "pv_ops" },
 	{ 0x30b5ba97, "path_get" },
 	{ 0xba8fbd64, "_raw_spin_lock" },
+	{ 0x833daaa7, "netlink_unicast" },
+	{ 0xff6f0dab, "__nlmsg_put" },
+	{ 0xe7a13e00, "__alloc_skb" },
 	{ 0x19dd88aa, "send_sig_info" },
 	{ 0x92997ed8, "_printk" },
 	{ 0x65487097, "__x86_indirect_thunk_rax" },
@@ -54,4 +60,4 @@ __used __section("__versions") = {
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "D57BA0085FD6ACB55F01D17");
+MODULE_INFO(srcversion, "04433D0FC35CEBC29C21CEF");
