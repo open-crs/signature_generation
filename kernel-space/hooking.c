@@ -383,7 +383,7 @@ static asmlinkage long fh_sys_openat_32(struct pt_regs *regs) {
 	// pr_info("openat32: %s\n", kernel_filename);
 
 	// pr_info("%s\n", kernel_filename);
-	if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/test_open+write/file.txt", 70) == 0) {
+	if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt", 76) == 0) {
 		pr_info("our file is opened32 by process with id: %d\n", task->pid);
 		pr_info("opened32 file : %s\n", kernel_filename);
 		kfree(kernel_filename);
@@ -415,7 +415,7 @@ static asmlinkage long fh_sys_openat_64(struct pt_regs *regs) {
 	// pr_info("openat32: %s\n", kernel_filename);
 
 	// pr_info("%s\n", kernel_filename);
-	if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/test_open+write/file.txt", 70) == 0) {
+	if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt", 76) == 0) {
 		pr_info("our file is opened64 by process with id: %d\n", task->pid);
 		pr_info("opened64 file : %s\n", kernel_filename);
 		kfree(kernel_filename);

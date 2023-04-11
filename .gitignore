@@ -1,4 +1,5 @@
 .*
+
 *.o
 *.o.*
 *.a
@@ -28,3 +29,5 @@ modules.order
 Module.symvers
 
 .vscode/*
+
+user-space/__pycache__/*
