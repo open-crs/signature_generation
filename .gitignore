@@ -6,6 +6,7 @@
 *.ko
 *.so
 *.so.dbg
+*.mod
 *.mod.c
 *.i
 *.lst
