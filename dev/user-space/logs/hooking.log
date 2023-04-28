@@ -1,0 +1,98 @@
+2023-04-28 16:51:00,345 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 16:51:00,358 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 16:51:00,514 - WARNING: file /etc/hosts is opened64 by process with id: 59904
+2023-04-28 16:51:02,615 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 16:51:02,624 - WARNING: file /etc/hosts is opened64 by process with id: 17070
+2023-04-28 16:51:04,066 - WARNING: file /etc/hosts is opened64 by process with id: 59833
+2023-04-28 16:51:04,227 - WARNING: file /etc/hosts is opened64 by process with id: 59903
+2023-04-28 16:51:06,381 - WARNING: file /etc/hosts is opened64 by process with id: 59901
+2023-04-28 16:51:08,481 - WARNING: file /etc/hosts is opened64 by process with id: 59902
+2023-04-28 16:51:10,580 - WARNING: file /etc/hosts is opened64 by process with id: 59904
+2023-04-28 16:51:12,678 - WARNING: file /etc/hosts is opened64 by process with id: 59903
+2023-04-28 16:51:12,802 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 59755 has been killed
+2023-04-28 16:51:17,010 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 16:51:17,024 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 16:51:17,407 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 16:51:17,421 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 16:51:18,543 - WARNING: file /etc/hosts is opened64 by process with id: 17070
+2023-04-28 16:51:18,547 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 16:51:21,179 - WARNING: file /etc/passwd is opened64 by process with id: 60172
+2023-04-28 16:51:21,180 - WARNING: file /etc/passwd is opened64 by process with id: 2639
+2023-04-28 16:51:21,180 - WARNING: file /etc/passwd is opened64 by process with id: 2639
+2023-04-28 16:51:26,248 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 16:51:26,261 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 16:51:33,359 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 16:51:33,373 - WARNING: file /etc/hosts is opened64 by process with id: 17070
+2023-04-28 16:51:33,419 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 16:51:33,432 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 16:51:36,492 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60210 has been killed
+2023-04-28 16:51:37,189 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60211 has been killed
+2023-04-28 16:51:37,556 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60212 has been killed
+2023-04-28 16:51:37,969 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60215 has been killed
+2023-04-28 16:51:38,440 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60216 has been killed
+2023-04-28 16:51:38,867 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60217 has been killed
+2023-04-28 16:51:39,302 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 60218 has been killed
+2023-04-28 17:01:42,096 - WARNING: file /etc/hosts is opened64 by process with id: 60386
+2023-04-28 17:01:47,114 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:01:47,129 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:01:49,377 - WARNING: file /etc/hosts is opened64 by process with id: 60457
+2023-04-28 17:01:51,475 - WARNING: file /etc/hosts is opened64 by process with id: 60458
+2023-04-28 17:01:53,571 - WARNING: file /etc/hosts is opened64 by process with id: 60455
+2023-04-28 17:01:55,598 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:01:55,611 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:01:55,657 - WARNING: file /etc/hosts is opened64 by process with id: 60456
+2023-04-28 17:01:57,694 - WARNING: file /etc/hosts is opened64 by process with id: 60457
+2023-04-28 17:01:59,805 - WARNING: file /etc/hosts is opened64 by process with id: 60458
+2023-04-28 17:04:16,431 - WARNING: file /etc/hosts is opened64 by process with id: 62268
+2023-04-28 17:04:16,684 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:16,691 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:16,732 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:16,736 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:18,076 - WARNING: file /etc/hosts is opened64 by process with id: 62458
+2023-04-28 17:04:18,530 - WARNING: file /etc/hosts is opened64 by process with id: 62267
+2023-04-28 17:04:20,679 - WARNING: file /etc/hosts is opened64 by process with id: 62266
+2023-04-28 17:04:22,780 - WARNING: file /etc/hosts is opened64 by process with id: 62265
+2023-04-28 17:04:23,701 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:23,716 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:24,872 - WARNING: file /etc/hosts is opened64 by process with id: 62268
+2023-04-28 17:04:24,939 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:24,955 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:26,971 - WARNING: file /etc/hosts is opened64 by process with id: 62267
+2023-04-28 17:04:27,276 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:27,283 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:27,284 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:27,288 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:27,292 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:27,296 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:27,300 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:27,316 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:27,319 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:27,322 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:28,475 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:28,477 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:28,486 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:28,487 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:28,630 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:28,630 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:28,631 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:28,631 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:28,632 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:28,908 - WARNING: file /etc/hosts is opened64 by process with id: 7907
+2023-04-28 17:04:29,069 - WARNING: file /etc/hosts is opened64 by process with id: 62266
+2023-04-28 17:04:29,491 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:29,505 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:29,628 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:29,628 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:29,629 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:29,629 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:29,629 - WARNING: file /etc/passwd is opened64 by process with id: 62725
+2023-04-28 17:04:30,509 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:30,512 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:31,209 - WARNING: file /etc/hosts is opened64 by process with id: 62265
+2023-04-28 17:04:33,306 - WARNING: file /etc/hosts is opened64 by process with id: 62268
+2023-04-28 17:04:33,577 - WARNING: file /etc/hosts is opened64 by process with id: 12390
+2023-04-28 17:04:33,581 - WARNING: file /etc/hosts is opened64 by process with id: 6325
+2023-04-28 17:04:33,705 - WARNING: file /etc/hosts is opened64 by process with id: 6471
+2023-04-28 17:04:33,721 - WARNING: file /etc/hosts is opened64 by process with id: 58963
+2023-04-28 17:04:35,408 - WARNING: file /etc/hosts is opened64 by process with id: 62267
+2023-04-28 17:04:36,879 - BLOCK: write64 attempt on file /home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt - target with pid 62181 has been killed

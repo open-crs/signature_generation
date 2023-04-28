@@ -33,7 +33,7 @@ class NetlinkSocket:
     def recvfrom(self, size):
         contents, (nlpid, nlgrps) = self.sock.recvfrom(size)
         struct.unpack("IHHII", contents[:16])
-        return bytes.decode(contents[1::], 'utf-8')
+        return bytes.decode(contents[16::], 'utf-8').rstrip('\0')
 
     def __nlmsghdr(self, mlen,nltype,flags,seq,pid):
         """
@@ -46,3 +46,6 @@ class NetlinkSocket:
         :returns: packed netlink msg header
         """
         return struct.pack(nl_nlmsghdr,NLMSGHDRLEN+mlen,nltype,flags,seq,pid)
+    
+    def close(self):
+        self.sock.close()

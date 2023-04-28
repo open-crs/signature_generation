@@ -21,6 +21,7 @@
 #include <linux/netlink.h>
 #include <linux/skbuff.h>
 #include <net/sock.h>
+#include <linux/string.h>
 
 MODULE_DESCRIPTION("System call hooking to protect a process from exploit attempts");
 MODULE_AUTHOR("Stefan Pana <stefanpana00@gmail.com>");
@@ -30,7 +31,118 @@ MODULE_LICENSE("GPL");
 static struct sock *socketptr = NULL;
 int PID = -1;
 
+static void nl_send_msg(char *msg) {
+	if (PID == -1) {
+		return;
+	}
+
+	struct sk_buff *skb_out;
+	struct nlmsghdr *nlh;
+	int msg_size = strlen(msg);
+	int res;
+
+	skb_out = nlmsg_new(msg_size, 0);
+	if (!skb_out) {
+		printk(KERN_ERR "Failed to allocate new skb\n");
+		return;
+	}
+
+	nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);
+	NETLINK_CB(skb_out).dst_group = 0;
+	strncpy(nlmsg_data(nlh), msg, msg_size);
+
+	res = nlmsg_unicast(socketptr, skb_out, PID);
+}
+
+int NR_IMPORTANT_FILES = 0;
+struct important_file *important_files = NULL;
+
+// PRIORITY
+// 0 - WARNING
+// 1 - BLOCK
+struct important_file {
+	char *path;
+	int priority;
+	long fd;
+	int pid;
+};
+
+static struct important_file *initialize_important_files(int size) {
+	int i = 0;
+	struct important_file *files = kmalloc(size * sizeof(struct important_file), GFP_KERNEL);
+
+	for (i = 0; i < size; i++) {
+		files[i].path = kmalloc(256, GFP_KERNEL);
+		files[i].priority = 0;
+		files[i].fd = -1;
+		files[i].pid = -1;
+	}
+
+	return files;
+}
+
+static int get_priority(char *value) {
+	if (strcmp(value, "WARNING") == 0) {
+		return 0;
+	} else if (strcmp(value, "BLOCK") == 0) {
+		return 1;
+	} else {
+		return -1;
+	}
+}
+
+static void populate_important_files(struct important_file **files, char *data) {
+	char *data_token = strsep(&data, "&");
+	int priority = -1;
+
+	while(data_token != NULL) {
+		char *rule = kmalloc(2048, GFP_KERNEL);
+		strcpy(rule, data_token);
+
+		char *rule_token = strsep(&rule, ";");
+
+		while(rule_token != NULL) {
+			char *key = strsep(&rule_token, "=");
+			char *value = strsep(&rule_token, "=");
+
+			if (strcmp(key, "priority") == 0) {
+				priority = get_priority(value);
+			} else if (strcmp(key, "importantFiles") == 0) {
+				char *file_path = kmalloc(256, GFP_KERNEL);
+				strcpy(file_path, value);
+
+				char *file_path_token = strsep(&file_path, ",");
+
+				while(file_path_token != NULL) {
+					strcpy((*files)[NR_IMPORTANT_FILES].path, file_path_token);
+					(*files)[NR_IMPORTANT_FILES].priority = priority;
+
+					NR_IMPORTANT_FILES++;
+
+					file_path_token = strsep(&file_path, ",");
+				}
+			}
+
+			rule_token = strsep(&rule, ";");
+		}
+
+		data_token = strsep(&data, "&");
+	}
+}
+
+static void free_important_files(void) {
+	int i = 0;
+
+	for (i = 0; i < NR_IMPORTANT_FILES; i++) {
+		kfree(important_files[i].path);
+	}
+
+	kfree(important_files);
+}
+
 static void nl_recv_msg(struct sk_buff *skb) {
+	int new_PID;
+	int reinitialize_rules = 0;
     struct nlmsghdr *nlh = NULL;
     if (skb == NULL) {
         printk("skb is NULL\n");
@@ -38,29 +150,39 @@ static void nl_recv_msg(struct sk_buff *skb) {
     }
 
     nlh = (struct nlmsghdr *)skb->data;
-	PID = nlh->nlmsg_pid;
+	new_PID = nlh->nlmsg_pid;
 
-    printk(KERN_INFO "%s: received netlink message payload: %s\nPID: %d\n", __FUNCTION__, NLMSG_DATA(nlh), PID);
+	if (new_PID != PID) {
+		PID = nlh->nlmsg_pid;
 
+		reinitialize_rules = 1;
+	}
+
+	// get data from user space
+	char *data = NLMSG_DATA(nlh);
+
+    printk(KERN_INFO "%s: received netlink message payload: %s\nPID: %d\n", __FUNCTION__, data, PID);
+
+	// (re)initialize important files
+	if (reinitialize_rules) {
+		free_important_files();
+		important_files = initialize_important_files(100);
+		NR_IMPORTANT_FILES = 0;
+	}
+
+	// populate important files
+	if (reinitialize_rules) {
+		populate_important_files(&important_files, data);
+	}
+
+	// print important files
+	int i;
+	for (i = 0; i < NR_IMPORTANT_FILES; i++) {
+		printk(KERN_INFO "Path: %s, Priority: %d, Fd: %ld\n", important_files[i].path, important_files[i].priority, important_files[i].fd);
+	}
 
 	// SEND MESSAGE TO USER SPACE
-	char *msg = "Hello msg from kernel";
-	int msg_size = strlen(msg);
-	struct sk_buff *skb_out = nlmsg_new(msg_size, 0);    //nlmsg_new - Allocate a new netlink message: skb_out
-
-    if (!skb_out) {
-        printk(KERN_ERR "Failed to allocate new skb\n");
-        return;
-    }
-
-    nlh = nlmsg_put(skb_out, 0, 0, NLMSG_DONE, msg_size, 0);   // Add a new netlink message to an skb
-    NETLINK_CB(skb_out).dst_group = 0;                  
-    strncpy(nlmsg_data(nlh), msg, msg_size); //char *strncpy(char *dest, const char *src, size_t count)
-    int res = nlmsg_unicast(socketptr, skb_out, PID); 
-
-    if (res < 0) {
-        printk(KERN_INFO "Error while sending back to user\n");
-	}
+	// nl_send_msg("Hello from kernel");
 }
 
 struct netlink_kernel_cfg cfg = {
@@ -272,7 +394,7 @@ void fh_remove_hooks(struct ftrace_hook *hooks, size_t count) {
 static char *duplicate_filename(const char __user *filename) {
 	char *kernel_filename;
 
-	kernel_filename = kmalloc(4096, GFP_KERNEL);
+	kernel_filename = kmalloc(8192, GFP_KERNEL);
 	if (!kernel_filename)
 		return NULL;
 
@@ -307,24 +429,35 @@ static asmlinkage long fh_sys_write_32(struct pt_regs *regs) {
 	task = current;
 	signum = SIGKILL;
 
-	if (task->pid == target_pid) {
-		pr_info("write32 by process %d\nregs->di: %lu\ntarget_fd: %d\n", task->pid, regs->bx, target_fd);
-		if (regs->bx == target_fd) {
-			pr_info("write32 done by process %d to target file.\n", task->pid);
+	// To continue
+	// char *msg = alloc_string(2048);
+	// sprintf(msg, "%s,%s,%lu,%s,%lu", "write", "32", regs->bx, duplicate_filename((void*) regs->cx), regs->dx);
+	// nl_send_msg(msg);
+	// kfree(msg);
 
-			memset(&info, 0, sizeof(struct kernel_siginfo));
-			info.si_signo = signum;
+	// if (task->pid == target_pid) {
+	// 	pr_info("write32 by process %d\nregs->di: %lu\ntarget_fd: %d\n", task->pid, regs->bx, target_fd);
+	// 	if (regs->bx == target_fd) {
+	// 		pr_info("write32 done by process %d to target file.\n", task->pid);
 
-			ret_status = send_sig_info(signum, &info, task);
+	// 		// char *msg = alloc_string(2048);
+	// 		// sprintf(msg, "%s,%s,%lu,%s,%lu", "write", "32", regs->bx, duplicate_filename((void*) regs->cx), regs->dx);
+	// 		// nl_send_msg(msg);
+	// 		// kfree(msg);
 
-			if (ret_status < 0) {
-				printk(KERN_INFO "error sending signal\n");
-			} else {
-				printk(KERN_INFO "Target has been killed\n");
-				return 0;
-			}
-		}
-	}
+	// 		memset(&info, 0, sizeof(struct kernel_siginfo));
+	// 		info.si_signo = signum;
+
+	// 		ret_status = send_sig_info(signum, &info, task);
+
+	// 		if (ret_status < 0) {
+	// 			printk(KERN_INFO "error sending signal\n");
+	// 		} else {
+	// 			printk(KERN_INFO "Target has been killed\n");
+	// 			return 0;
+	// 		}
+	// 	}
+	// }
 
 	ret = real_sys_write_32(regs);
 
@@ -336,6 +469,7 @@ static asmlinkage long (*real_sys_write_64)(struct pt_regs *regs);
 
 static asmlinkage long fh_sys_write_64(struct pt_regs *regs) {
 	int ret_status;
+	int i;
 	long ret;
 	int signum;
 	struct task_struct *task;
@@ -344,21 +478,80 @@ static asmlinkage long fh_sys_write_64(struct pt_regs *regs) {
 	task = current;
 	signum = SIGKILL;
 
-	if (task->pid == target_pid) {
-		pr_info("write64 by process %d\nregs->di: %lu\ntarget_fd: %d\n", task->pid, regs->di, target_fd);
-		if (regs->di == target_fd) {
-			pr_info("write64 done by process %d to target file.\n", task->pid);
+	// To continue
+	// char *msg = alloc_string(8192);
+	// char *arg1 = duplicate_filename((void*) regs->si);
+	// sprintf(msg, "%s,%s,%u,%lu,%s,%lu", "write", "64", task->pid, regs->di, arg1, regs->dx);
+	// nl_send_msg(msg);
+	// kfree(msg);
+	// kfree(arg1);
 
-			memset(&info, 0, sizeof(struct kernel_siginfo));
-			info.si_signo = signum;
+	// nl_recv_msg2();
 
-			ret_status = send_sig_info(signum, &info, task);
+	// char *msg = alloc_string(2048);
+	// char *arg1;
+	// if (msg != NULL && regs->si != NULL && regs->di != NULL && regs->dx != NULL) {
+	// 	char *arg1 = duplicate_filename((void*) regs->si);
+	// 	sprintf(msg, "%s,%s,%lu,%s,%lu", "write", "64", regs->di, arg1, regs->dx);
+	// 	// nl_send_msg(msg);
+	// 	kfree(msg);
+	// 	kfree(arg1);
+	// }
+	
+	// pr_info("write64\n");
 
-			if (ret_status < 0) {
-				printk(KERN_INFO "error sending signal\n");
-			} else {
-				printk(KERN_INFO "Target has been killed\n");
-				return 0;
+	// if (task->pid == target_pid) {
+	// 	pr_info("write64 by process %d\nregs->di: %lu\ntarget_fd: %d\n", task->pid, regs->di, target_fd);
+	// 	if (regs->di == target_fd) {
+	// 		pr_info("write64 done by process %d to target file.\n", task->pid);
+
+	// 		memset(&info, 0, sizeof(struct kernel_siginfo));
+	// 		info.si_signo = signum;
+
+	// 		ret_status = send_sig_info(signum, &info, task);
+
+	// 		if (ret_status < 0) {
+	// 			printk(KERN_INFO "error sending signal\n");
+	// 		} else {
+	// 			printk(KERN_INFO "Target has been killed\n");
+	// 			return 0;
+	// 		}
+	// 	}
+	// }
+
+	if (important_files != NULL) {
+		for (i = 0; i < NR_IMPORTANT_FILES; i++) {
+			if (task->pid == important_files[i].pid && regs->di == important_files[i].fd) {
+				if (important_files[i].priority == 0) {
+					// LOG WARNING
+					char *msg = alloc_string(2048);
+
+					sprintf(msg, "WARNING: file %s is write64 by process with pid: %d", important_files[i].path, task->pid);
+					nl_send_msg(msg);
+
+					kfree(msg);
+				} else if (important_files[i].priority == 1) {
+					// TERMINATE PROCESS
+					memset(&info, 0, sizeof(struct kernel_siginfo));
+					info.si_signo = signum;
+
+					ret_status = send_sig_info(signum, &info, task);
+
+					char *msg = alloc_string(2048);
+
+					if (ret_status < 0) {
+						sprintf(msg, "BLOCK: write64 attempt on file %s - target with pid %d could not be killed (error while sending signal)", important_files[i].path, task->pid);
+						nl_send_msg(msg);
+
+						kfree(msg);
+					} else {
+						sprintf(msg, "BLOCK: write64 attempt on file %s - target with pid %d has been killed", important_files[i].path, task->pid);
+						nl_send_msg(msg);
+
+						kfree(msg);
+						return 0;
+					}
+				}
 			}
 		}
 	}
@@ -379,20 +572,27 @@ static asmlinkage long fh_sys_openat_32(struct pt_regs *regs) {
 
 	kernel_filename = duplicate_filename((void*) regs->cx);
 
+	// To continue
+	// char *msg = alloc_string(2048);
+	// sprintf(msg, "%s,%s,%lu,%s,%lu,%lu", "openat", "32", regs->bx, kernel_filename, regs->dx, regs->si);
+	// nl_send_msg(msg);
+	// kfree(msg);
+
 	// get_absolute_path(kernel_filename);
 	// pr_info("openat32: %s\n", kernel_filename);
 
 	// pr_info("%s\n", kernel_filename);
-	if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt", 76) == 0) {
-		pr_info("our file is opened32 by process with id: %d\n", task->pid);
-		pr_info("opened32 file : %s\n", kernel_filename);
-		kfree(kernel_filename);
-		ret = real_sys_openat_32(regs);
-		pr_info("fd returned is %ld\n", ret);
-		target_fd = ret;
-		target_pid = task->pid;
-		return ret;
-	}
+
+	// if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt", 76) == 0) {
+	// 	pr_info("our file is opened32 by process with id: %d\n", task->pid);
+	// 	pr_info("opened32 file : %s\n", kernel_filename);
+	// 	kfree(kernel_filename);
+	// 	ret = real_sys_openat_32(regs);
+	// 	pr_info("fd returned is %ld\n", ret);
+	// 	target_fd = ret;
+	// 	target_pid = task->pid;
+	// 	return ret;
+	// }
 
 	kfree(kernel_filename);
 	ret = real_sys_openat_32(regs);
@@ -405,6 +605,7 @@ static asmlinkage long (*real_sys_openat_64)(struct pt_regs *regs);
 
 static asmlinkage long fh_sys_openat_64(struct pt_regs *regs) {
 	long ret;
+	int i;
 	char *kernel_filename;
 	struct task_struct *task;
 	task = current;
@@ -415,19 +616,54 @@ static asmlinkage long fh_sys_openat_64(struct pt_regs *regs) {
 	// pr_info("openat32: %s\n", kernel_filename);
 
 	// pr_info("%s\n", kernel_filename);
-	if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt", 76) == 0) {
-		pr_info("our file is opened64 by process with id: %d\n", task->pid);
-		pr_info("opened64 file : %s\n", kernel_filename);
-		kfree(kernel_filename);
-		ret = real_sys_openat_64(regs);
-		pr_info("fd returned is %ld\n", ret);
-		target_fd = ret;
-		target_pid = task->pid;
-		return ret;
+
+	// GOOD
+	// if (strncmp(kernel_filename, "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt", 76) == 0) {
+	// 	pr_info("our file is opened64 by process with id: %d\n", task->pid);
+	// 	pr_info("opened64 file : %s\n", kernel_filename);
+	// 	kfree(kernel_filename);
+	// 	ret = real_sys_openat_64(regs);
+	// 	pr_info("fd returned is %ld\n", ret);
+	// 	target_fd = ret;
+	// 	target_pid = task->pid;
+	// 	return ret;
+	// }
+
+	if (important_files != NULL) {
+		for (i = 0; i < NR_IMPORTANT_FILES; i++) {
+			if (strncmp(kernel_filename, important_files[i].path, strlen(kernel_filename)) == 0) {
+				ret = real_sys_openat_64(regs);
+
+				important_files[i].fd = ret;
+				important_files[i].pid = task->pid;
+
+				// LOG WARNING
+				if (important_files[i].priority == 0) {
+					// pr_info("file %s is opened64 by process with id: %d\n", important_files[i].path, task->pid);
+					char *msg = alloc_string(2048);
+
+					sprintf(msg, "WARNING: file %s is opened64 by process with id: %d", important_files[i].path, task->pid);
+					nl_send_msg(msg);
+
+					kfree(msg);
+				}
+
+				kfree(kernel_filename);
+				return ret;
+			}
+		}
 	}
 
-	kfree(kernel_filename);
 	ret = real_sys_openat_64(regs);
+
+	// To continue
+	// char *msg = alloc_string(8192);
+	// sprintf(msg, "%s,%s,%ld,%u,%lu,%s,%lu,%lu", "openat", "64", ret, task->pid, regs->di, kernel_filename, regs->dx, regs->r10);
+	// nl_send_msg(msg);
+	// kfree(msg);
+	kfree(kernel_filename);
+
+	// nl_recv_msg2();
 
 	return ret;
 }
@@ -442,6 +678,16 @@ static asmlinkage long fh_sys_execve_32(struct pt_regs *regs) {
 	char *pwd_path_raw;
 	char *syscall_path_argument = duplicate_filename((void *)regs->bx);
 	char *x = alloc_string(1000);
+
+	// To continue
+	// char *msg = alloc_string(2048);
+	// char *arg2 = duplicate_filename((void *)regs->dx);
+	// char *arg3 = duplicate_filename((void *)regs->si);
+	// sprintf(msg, "%s,%s,%s,%s,%s", "execve", "32", syscall_path_argument, arg2, arg3);
+	// nl_send_msg(msg);
+	// kfree(msg);
+	// kfree(arg2);
+	// kfree(arg3);
 
 	task = current;
 
@@ -471,6 +717,16 @@ static asmlinkage long fh_sys_execve_64(struct pt_regs *regs) {
 	char *syscall_path_argument = duplicate_filename((void *)regs->di);
 	char *x = alloc_string(1000);
 	// char possible_full_name[500];
+
+	// To continue
+	// char *msg = alloc_string(2048);
+	// char *arg2 = duplicate_filename((void *)regs->si);
+	// char *arg3 = duplicate_filename((void *)regs->dx);
+	// sprintf(msg, "%s,%s,%s,%s,%s", "execve", "64", syscall_path_argument, arg2, arg3);
+	// nl_send_msg(msg);
+	// kfree(msg);
+	// kfree(arg2);
+	// kfree(arg3);
 
 	task = current;
 
@@ -543,6 +799,7 @@ static int fh_init(void) {
 
 	pr_info("Initializing Netlink Socket\n");
     socketptr = netlink_kernel_create(&init_net, NETLINK_TEST, &cfg);
+
 	if (!socketptr) {
 		pr_info("Error creating socket.\n");
 		return 0;

@@ -1,0 +1,4 @@
+{
+    "rulesFile": "./rules/rules.json",
+    "logFile": "./logs/hooking.log"
+}

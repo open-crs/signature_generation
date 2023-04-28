@@ -1,0 +1,20 @@
+{
+    "protectFiles": [
+        {
+            "importantFiles": [
+                "/etc/passwd",
+                "/etc/group",
+                "/etc/hosts",
+                "/etc/hostname",
+                "/etc/shadow"
+            ],
+            "priority": "WARNING"
+        },
+        {
+            "importantFiles": [
+                "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt"
+            ],
+            "priority": "BLOCK"
+        }
+    ]
+}

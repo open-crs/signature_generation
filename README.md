@@ -5,9 +5,9 @@
 ### run kernel module
 
 ```console
-foo@bar:~/syscall_hooking$ cd kernel-space 
-foo@bar:~/syscall_hooking/kernel-space$ make
-foo@bar:~/syscall_hooking/kernel-space$ sudo insmod hooking.ko
+foo@bar:~/syscall_hooking$ cd ./dev/kernel-space 
+foo@bar:~/syscall_hooking/dev/kernel-space$ make
+foo@bar:~/syscall_hooking/dev/kernel-space$ sudo insmod hooking.ko
 ```
 
 ## User space
@@ -15,6 +15,6 @@ foo@bar:~/syscall_hooking/kernel-space$ sudo insmod hooking.ko
 ### run python script
 
 ```console
-foo@bar:~/syscall_hooking$ cd user-space
-foo@bar:~/syscall_hooking/user-space$ sudo python3 main.py
+foo@bar:~/syscall_hooking$ cd ./dev/user-space
+foo@bar:~/syscall_hooking/dev/user-space$ sudo python3 main.py
 ```
