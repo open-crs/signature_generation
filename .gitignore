@@ -31,3 +31,6 @@ Module.symvers
 .vscode/*
 
 /dev/user-space/__pycache__/*
+/dev/user-space/rules/*.json
+/dev/user-space/config/*.json
+/dev/user-space/logs/*
