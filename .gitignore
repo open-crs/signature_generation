@@ -30,4 +30,4 @@ Module.symvers
 
 .vscode/*
 
-user-space/__pycache__/*
+/dev/user-space/__pycache__/*
