@@ -57,6 +57,9 @@ static void nl_send_msg(char *msg) {
 int NR_IMPORTANT_FILES = 0;
 struct important_file *important_files = NULL;
 
+int NR_IMPORTANT_SYSCALLS = 0;
+struct important_syscall *important_syscalls = NULL;
+
 // PRIORITY
 // 0 - WARNING
 // 1 - BLOCK
@@ -67,8 +70,18 @@ struct important_file {
 	int pid;
 };
 
+// PRIORITY
+// 0 - WARNING
+// 1 - BLOCK
+struct important_syscall {
+	char *name;
+	char **arguments;
+	int nr_arguments;
+	int priority;
+};
+
 static struct important_file *initialize_important_files(int size) {
-	int i = 0;
+	int i;
 	struct important_file *files = kmalloc(size * sizeof(struct important_file), GFP_KERNEL);
 
 	for (i = 0; i < size; i++) {
@@ -79,6 +92,23 @@ static struct important_file *initialize_important_files(int size) {
 	}
 
 	return files;
+}
+
+static struct important_syscall *initialize_important_syscalls(int size) {
+	int i, j;
+	struct important_syscall *syscalls = kmalloc(size * sizeof(struct important_syscall), GFP_KERNEL);
+
+	for (i = 0; i < size; i++) {
+		syscalls[i].name = kmalloc(256, GFP_KERNEL);
+		syscalls[i].nr_arguments = 0;
+		syscalls[i].priority = -1;
+		syscalls[i].arguments = kmalloc(256 * sizeof(char *), GFP_KERNEL);
+		for (j = 0; j < 256; j++) {
+			syscalls[i].arguments[j] = kmalloc(256, GFP_KERNEL);
+		}
+	}
+
+	return syscalls;
 }
 
 static int get_priority(char *value) {
@@ -130,14 +160,74 @@ static void populate_important_files(struct important_file **files, char *data) 
 	}
 }
 
+static void populate_important_syscalls(struct important_syscall **syscalls, char *data) {
+	char *data_token = strsep(&data, "&");
+	int priority = -1;
+
+	while(data_token != NULL) {
+		char *rule = kmalloc(2048, GFP_KERNEL);
+		strcpy(rule, data_token);
+
+		char *rule_token = strsep(&rule, ";");
+
+		while(rule_token != NULL) {
+			char *key = strsep(&rule_token, "=");
+			char *value = strsep(&rule_token, "=");
+
+			if (strcmp(key, "priority") == 0) {
+				priority = get_priority(value);
+			} else if (strcmp(key, "arguments") == 0) {
+				char *arg = kmalloc(256, GFP_KERNEL);
+				strcpy(arg, value);
+
+				char *arg_token = strsep(&arg, ",");
+
+				while(arg_token != NULL) {
+					int nr_arguments = (*syscalls)[NR_IMPORTANT_SYSCALLS].nr_arguments;
+					strcpy((*syscalls)[NR_IMPORTANT_SYSCALLS].arguments[nr_arguments], arg_token);
+					nr_arguments++;
+					(*syscalls)[NR_IMPORTANT_SYSCALLS].nr_arguments = nr_arguments;
+
+					pr_info("arg: %s\n", arg_token);
+
+					arg_token = strsep(&arg, ",");
+				}
+			} else if (strcmp(key, "syscall") == 0) {
+				strcpy((*syscalls)[NR_IMPORTANT_SYSCALLS].name, value);
+				(*syscalls)[NR_IMPORTANT_SYSCALLS].priority = priority;
+			}
+
+			rule_token = strsep(&rule, ";");
+		}
+
+		NR_IMPORTANT_SYSCALLS++;
+		data_token = strsep(&data, "&");
+	}
+
+	NR_IMPORTANT_SYSCALLS--;
+}
+
 static void free_important_files(void) {
-	int i = 0;
+	int i;
 
 	for (i = 0; i < NR_IMPORTANT_FILES; i++) {
 		kfree(important_files[i].path);
 	}
 
 	kfree(important_files);
+}
+
+static void free_important_syscalls(void) {
+	int i, j;
+
+	for (i = 0; i < NR_IMPORTANT_SYSCALLS; i++) {
+		kfree(important_syscalls[i].name);
+		for (j = 0; j < important_syscalls[i].nr_arguments; j++) {
+			kfree(important_syscalls[i].arguments[j]);
+		}
+	}
+
+	kfree(important_syscalls);
 }
 
 static void nl_recv_msg(struct sk_buff *skb) {
@@ -164,26 +254,52 @@ static void nl_recv_msg(struct sk_buff *skb) {
 
     printk(KERN_INFO "%s: received netlink message payload: %s\nPID: %d\n", __FUNCTION__, data, PID);
 
-	// (re)initialize important files
 	if (reinitialize_rules) {
-		free_important_files();
-		important_files = initialize_important_files(100);
-		NR_IMPORTANT_FILES = 0;
+		char *data_token = strsep(&data, "#");
+
+		while(data_token != NULL) {
+			char *rule = kmalloc(2048, GFP_KERNEL);
+			strcpy(rule, data_token);
+
+			char *key = strsep(&rule, ":");
+			char *value = strsep(&rule, ":");
+
+			if (strcmp(key, "ProtectedFiles") == 0) {
+				// (re)initialize important files
+				free_important_files();
+				important_files = initialize_important_files(100);
+				NR_IMPORTANT_FILES = 0;
+
+				// populate important files
+				populate_important_files(&important_files, value);
+			} else if (strcmp(key, "ProtectedSyscalls") == 0) {
+				// (re)initialize important syscalls
+				free_important_syscalls();
+				important_syscalls = initialize_important_syscalls(100);
+				NR_IMPORTANT_SYSCALLS = 0;
+
+				// populate important syscalls
+				populate_important_syscalls(&important_syscalls, value);
+			}
+
+			data_token = strsep(&data, "#");
+		}
 	}
 
-	// populate important files
-	if (reinitialize_rules) {
-		populate_important_files(&important_files, data);
-	}
+	// // print important files
+	// int i, j;
+	// for (i = 0; i < NR_IMPORTANT_FILES; i++) {
+	// 	printk(KERN_INFO "Path: %s, Priority: %d, Fd: %ld\n", important_files[i].path, important_files[i].priority, important_files[i].fd);
+	// }
 
-	// print important files
-	int i;
-	for (i = 0; i < NR_IMPORTANT_FILES; i++) {
-		printk(KERN_INFO "Path: %s, Priority: %d, Fd: %ld\n", important_files[i].path, important_files[i].priority, important_files[i].fd);
-	}
-
-	// SEND MESSAGE TO USER SPACE
-	// nl_send_msg("Hello from kernel");
+	// // print important syscalls
+	// for (i = 0; i < NR_IMPORTANT_SYSCALLS; i++) {
+	// 	printk(KERN_INFO "Syscall: %s, Priority: %d\n", important_syscalls[i].name, important_syscalls[i].priority);
+	// 	printk(KERN_INFO "Arguments:\n"); 
+	// 	for (j = 0; j < important_syscalls[i].nr_arguments; j++) {
+	// 		printk(KERN_INFO "%s ", important_syscalls[i].arguments[j]);
+	// 	}
+	// }
 }
 
 struct netlink_kernel_cfg cfg = {
@@ -615,16 +731,6 @@ static asmlinkage long fh_sys_execve_32(struct pt_regs *regs) {
 	char *syscall_path_argument = duplicate_filename((void *)regs->bx);
 	char *x = alloc_string(1000);
 
-	// To continue
-	// char *msg = alloc_string(2048);
-	// char *arg2 = duplicate_filename((void *)regs->dx);
-	// char *arg3 = duplicate_filename((void *)regs->si);
-	// sprintf(msg, "%s,%s,%s,%s,%s", "execve", "32", syscall_path_argument, arg2, arg3);
-	// nl_send_msg(msg);
-	// kfree(msg);
-	// kfree(arg2);
-	// kfree(arg3);
-
 	task = current;
 
 	if (strncmp(syscall_path_argument, "/bin/sh", 7) == 0) {
@@ -646,43 +752,123 @@ static asmlinkage long fh_sys_execve_32(struct pt_regs *regs) {
 static asmlinkage long (*real_sys_execve_64)(struct pt_regs *regs);
 
 static asmlinkage long fh_sys_execve_64(struct pt_regs *regs) {
+	int i, j, signum, ret_status;
 	long ret;
 	struct task_struct *task;
-	struct path pwd;
-	char *pwd_path_raw;
+	struct kernel_siginfo info;
 	char *syscall_path_argument = duplicate_filename((void *)regs->di);
-	char *x = alloc_string(1000);
-	// char possible_full_name[500];
-
-	// To continue
-	// char *msg = alloc_string(2048);
-	// char *arg2 = duplicate_filename((void *)regs->si);
-	// char *arg3 = duplicate_filename((void *)regs->dx);
-	// sprintf(msg, "%s,%s,%s,%s,%s", "execve", "64", syscall_path_argument, arg2, arg3);
-	// nl_send_msg(msg);
-	// kfree(msg);
-	// kfree(arg2);
-	// kfree(arg3);
 
 	task = current;
+	signum = SIGKILL;
 
-	// get current working directory
-	get_fs_pwd(task->fs, &pwd);
-	pwd_path_raw = dentry_path_raw(pwd.dentry, x, 999);
+	if (important_syscalls != NULL) {
+		for (i = 0; i < NR_IMPORTANT_SYSCALLS; i++) {
+			if (strncmp("execve", important_syscalls[i].name, 6) == 0) {
+				for (j = 0; j < important_syscalls[i].nr_arguments; j++) {
+					if (strncmp(syscall_path_argument, important_syscalls[i].arguments[j], strlen(syscall_path_argument)) == 0) {
+						// LOG WARNING
+						if (important_syscalls[i].priority == 0) {
+							char *msg = alloc_string(2048);
 
-	// strcat(possible_full_name, pwd_path_raw);
-	// strcat(possible_full_name, "/");
-	// strcat(possible_full_name, syscall_path_argument);
+							sprintf(msg, "WARNING: syscall %s is called with argument %s by process with id: %d", important_syscalls[i].name, syscall_path_argument, task->pid);
+							nl_send_msg(msg);
 
-	if ((strncmp(syscall_path_argument, "/bin/sh", 7) == 0) ||
-		 strncmp(syscall_path_argument, "/usr/bin/sh", 11) == 0) {
-		pr_info("execve64 with argument %s\npwd_path: %s\n", syscall_path_argument, pwd_path_raw);
+							kfree(msg);
+						} else if (important_syscalls[i].priority == 1) {
+							// TERMINATE PROCESS
+							memset(&info, 0, sizeof(struct kernel_siginfo));
+							info.si_signo = signum;
+
+							ret_status = send_sig_info(signum, &info, task);
+
+							char *msg = alloc_string(2048);
+
+							if (ret_status < 0) {
+								sprintf(msg, "BLOCK: execve64 attempt with argument %s - target with pid %d could not be killed (error while sending signal)", important_syscalls[i].arguments[j], task->pid);
+								nl_send_msg(msg);
+
+								kfree(msg);
+							} else {
+								sprintf(msg, "BLOCK: execve64 attempt with argument %s - target with pid %d has been killed", important_syscalls[i].arguments[j], task->pid);
+								nl_send_msg(msg);
+
+								kfree(msg);
+								return 0;
+							}
+						}
+
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	ret = real_sys_execve_64(regs);
 
 	kfree(syscall_path_argument);
-	kfree(x);
+	return ret;
+}
+
+// RENAMEAT2 64 BIT
+static asmlinkage long (*real_sys_renameat2_64)(struct pt_regs *regs);
+
+static asmlinkage long fh_sys_renameat2_64(struct pt_regs *regs) {
+	int i, j, signum, ret_status;
+	long ret;
+	struct task_struct *task;
+	struct kernel_siginfo info;
+	char *syscall_path_argument = duplicate_filename((void *)regs->si);
+
+	task = current;
+	signum = SIGKILL;
+
+	if (important_syscalls != NULL) {
+		for (i = 0; i < NR_IMPORTANT_SYSCALLS; i++) {
+			if (strncmp("renameat2", important_syscalls[i].name, 6) == 0) {
+				for (j = 0; j < important_syscalls[i].nr_arguments; j++) {
+					if (strncmp(syscall_path_argument, important_syscalls[i].arguments[j], strlen(syscall_path_argument)) == 0) {
+						// LOG WARNING
+						if (important_syscalls[i].priority == 0) {
+							char *msg = alloc_string(2048);
+
+							sprintf(msg, "WARNING: syscall %s is called with argument %s by process with id: %d", important_syscalls[i].name, syscall_path_argument, task->pid);
+							nl_send_msg(msg);
+
+							kfree(msg);
+						} else if (important_syscalls[i].priority == 1) {
+							// TERMINATE PROCESS
+							memset(&info, 0, sizeof(struct kernel_siginfo));
+							info.si_signo = signum;
+
+							ret_status = send_sig_info(signum, &info, task);
+
+							char *msg = alloc_string(2048);
+
+							if (ret_status < 0) {
+								sprintf(msg, "BLOCK: renameat2 attempt with argument %s - target with pid %d could not be killed (error while sending signal)", important_syscalls[i].arguments[j], task->pid);
+								nl_send_msg(msg);
+
+								kfree(msg);
+							} else {
+								sprintf(msg, "BLOCK: renameat2 attempt with argument %s - target with pid %d has been killed", important_syscalls[i].arguments[j], task->pid);
+								nl_send_msg(msg);
+
+								kfree(msg);
+								return 0;
+							}
+						}
+
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	ret = real_sys_renameat2_64(regs);
+
+	kfree(syscall_path_argument);
 	return ret;
 }
 
@@ -722,6 +908,7 @@ static struct ftrace_hook syscall_hooks[] = {
 	HOOK_64("sys_write", fh_sys_write_64, &real_sys_write_64), // write
 	HOOK_64("sys_openat", fh_sys_openat_64, &real_sys_openat_64), // openat
 	HOOK_64("sys_execve", fh_sys_execve_64, &real_sys_execve_64), // execv
+	HOOK_64("sys_renameat2", fh_sys_renameat2_64, &real_sys_renameat2_64), // renameat2
 };
 
 static int fh_init(void) {

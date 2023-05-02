@@ -18,7 +18,7 @@ rules_list = json.load(rules_file)
 
 ### Create message for "protectFiles" to send to kernel module
 
-rules_message = ""
+rules_message = "ProtectedFiles:"
 
 for rules in rules_list["protectFiles"]:
     rules_message += "priority=" + rules["priority"] + ";"
@@ -34,6 +34,30 @@ for rules in rules_list["protectFiles"]:
         i += 1
 
     rules_message += "&"
+
+rules_message += "#"
+
+### Create message for "protectSyscalls" to send to kernel module
+
+rules_message += "ProtectedSyscalls:"
+
+for rules in rules_list["protectSyscalls"]:
+    rules_message += "priority=" + rules["priority"] + ";"
+    rules_message += "syscall=" + rules["syscall"] + ";"
+    rules_message += "arguments="
+
+    i = 0
+    for arg in rules["arguments"]:
+        if (i == len(rules["arguments"]) - 1):
+            rules_message += arg
+            break
+        rules_message += arg + ","
+
+        i += 1
+
+    rules_message += "&"
+
+print(rules_message)
 
 ### Send the message to the kernel module
 try:
