@@ -16,5 +16,27 @@
             ],
             "priority": "BLOCK"
         }
+    ],
+    "protectSyscalls": [
+        {
+            "syscall": "execve",
+            "arguments": [
+                "/bin/sh",
+                "/bin/bash",
+                "/bin/zsh",
+                "/usr/bin/sh",
+                "/usr/bin/bash",
+                "/usr/bin/zsh"
+            ],
+            "priority": "WARNING"
+        },
+        {
+            "syscall": "renameat2",
+            "arguments": [
+                "/home/feather/student/licenta/syscall_hooking/tests/test_open+write/file.txt",
+                "/home/feather/student/licenta/syscall_hooking/tests/test_renameat2/file.txt"
+            ],
+            "priority": "BLOCK"
+        }
     ]
 }
