@@ -57,8 +57,6 @@ for rules in rules_list["protectSyscalls"]:
 
     rules_message += "&"
 
-print(rules_message)
-
 ### Send the message to the kernel module
 try:
     netlink_socket = nsocket.NetlinkSocket(NETLINK_USER)
