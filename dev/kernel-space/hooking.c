@@ -511,11 +511,11 @@ void fh_remove_hooks(struct ftrace_hook *hooks, size_t count) {
 static char *duplicate_filename(const char __user *filename) {
 	char *kernel_filename;
 
-	kernel_filename = kmalloc(8192, GFP_KERNEL);
+	kernel_filename = kmalloc(2048, GFP_KERNEL);
 	if (!kernel_filename)
 		return NULL;
 
-	if (strncpy_from_user(kernel_filename, filename, 4096) < 0) {
+	if (strncpy_from_user(kernel_filename, filename, 2048) < 0) {
 		kfree(kernel_filename);
 		return NULL;
 	}
@@ -633,6 +633,62 @@ static asmlinkage long fh_sys_write_64(struct pt_regs *regs) {
 	}
 
 	ret = real_sys_write_64(regs);
+
+	return ret;
+}
+
+// READ 64 BIT
+static asmlinkage long (*real_sys_read_64)(struct pt_regs *regs);
+
+static asmlinkage long fh_sys_read_64(struct pt_regs *regs) {
+	int ret_status;
+	int i;
+	long ret;
+	int signum;
+	struct task_struct *task;
+	struct kernel_siginfo info;
+
+	task = current;
+	signum = SIGKILL;
+
+	if (important_files != NULL) {
+		for (i = 0; i < NR_IMPORTANT_FILES; i++) {
+			if (task->pid == important_files[i].pid && regs->di == important_files[i].fd) {
+				if (important_files[i].priority == 0) {
+					// LOG WARNING
+					char *msg = alloc_string(2048);
+
+					sprintf(msg, "WARNING: file %s is read64 by process with pid: %d", important_files[i].path, task->pid);
+					nl_send_msg(msg);
+
+					kfree(msg);
+				} else if (important_files[i].priority == 1) {
+					// TERMINATE PROCESS
+					memset(&info, 0, sizeof(struct kernel_siginfo));
+					info.si_signo = signum;
+
+					ret_status = send_sig_info(signum, &info, task);
+
+					char *msg = alloc_string(2048);
+
+					if (ret_status < 0) {
+						sprintf(msg, "BLOCK: read64 attempt on file %s - target with pid %d could not be killed (error while sending signal)", important_files[i].path, task->pid);
+						nl_send_msg(msg);
+
+						kfree(msg);
+					} else {
+						sprintf(msg, "BLOCK: read64 attempt on file %s - target with pid %d has been killed", important_files[i].path, task->pid);
+						nl_send_msg(msg);
+
+						kfree(msg);
+						return 0;
+					}
+				}
+			}
+		}
+	}
+
+	ret = real_sys_read_64(regs);
 
 	return ret;
 }
@@ -872,6 +928,122 @@ static asmlinkage long fh_sys_renameat2_64(struct pt_regs *regs) {
 	return ret;
 }
 
+// KILL 64 BIT
+static asmlinkage long (*real_sys_kill_64)(struct pt_regs *regs);
+
+static asmlinkage long fh_sys_kill_64(struct pt_regs *regs) {
+	int i, j, signum, ret_status;
+	long ret;
+	struct task_struct *task;
+	struct kernel_siginfo info;
+	char syscall_path_argument[16];
+	sprintf(syscall_path_argument, "%ld", regs->di);
+
+	task = current;
+	signum = SIGKILL;
+
+	if (important_syscalls != NULL) {
+		for (i = 0; i < NR_IMPORTANT_SYSCALLS; i++) {
+			if (strncmp("kill", important_syscalls[i].name, 6) == 0) {
+				for (j = 0; j < important_syscalls[i].nr_arguments; j++) {
+					if (strncmp(syscall_path_argument, important_syscalls[i].arguments[j], strlen(syscall_path_argument)) == 0) {
+						// LOG WARNING
+						if (important_syscalls[i].priority == 0) {
+							char *msg = alloc_string(2048);
+
+							sprintf(msg, "WARNING: syscall %s is called with argument %s by process with id: %d", important_syscalls[i].name, syscall_path_argument, task->pid);
+							nl_send_msg(msg);
+
+							kfree(msg);
+						} else if (important_syscalls[i].priority == 1) {
+							// TERMINATE PROCESS
+							memset(&info, 0, sizeof(struct kernel_siginfo));
+							info.si_signo = signum;
+
+							ret_status = send_sig_info(signum, &info, task);
+
+							char *msg = alloc_string(2048);
+
+							if (ret_status < 0) {
+								sprintf(msg, "BLOCK: kill attempt with argument %s - target with pid %d could not be killed (error while sending signal)", important_syscalls[i].arguments[j], task->pid);
+								nl_send_msg(msg);
+
+								kfree(msg);
+							} else {
+								sprintf(msg, "BLOCK: kill attempt with argument %s - target with pid %d has been killed", important_syscalls[i].arguments[j], task->pid);
+								nl_send_msg(msg);
+
+								kfree(msg);
+								return 0;
+							}
+						}
+
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	ret = real_sys_kill_64(regs);
+	return ret;
+}
+
+// REBOOT 64 BIT
+static asmlinkage long (*real_sys_reboot_64)(struct pt_regs *regs);
+
+static asmlinkage long fh_sys_reboot_64(struct pt_regs *regs) {
+	int i, signum, ret_status;
+	long ret;
+	struct task_struct *task;
+	struct kernel_siginfo info;
+	char syscall_path_argument[16];
+	sprintf(syscall_path_argument, "%u", regs->dx);
+
+	task = current;
+	signum = SIGKILL;
+
+	if (important_syscalls != NULL) {
+		for (i = 0; i < NR_IMPORTANT_SYSCALLS; i++) {
+			if (strncmp("reboot", important_syscalls[i].name, 6) == 0) {
+				// LOG WARNING
+				if (important_syscalls[i].priority == 0) {
+					char *msg = alloc_string(2048);
+
+					sprintf(msg, "WARNING: syscall %s is called with argument %s by process with id: %d", important_syscalls[i].name, syscall_path_argument, task->pid);
+					nl_send_msg(msg);
+
+					kfree(msg);
+				} else if (important_syscalls[i].priority == 1) {
+					// TERMINATE PROCESS
+					memset(&info, 0, sizeof(struct kernel_siginfo));
+					info.si_signo = signum;
+
+					ret_status = send_sig_info(signum, &info, task);
+
+					char *msg = alloc_string(2048);
+
+					if (ret_status < 0) {
+						sprintf(msg, "BLOCK: reboot attempt - target with pid %d could not be killed (error while sending signal)", task->pid);
+						nl_send_msg(msg);
+
+						kfree(msg);
+					} else {
+						sprintf(msg, "BLOCK: reboot attempt - target with pid %d has been killed", task->pid, syscall_path_argument);
+						nl_send_msg(msg);
+
+						kfree(msg);
+						return 0;
+					}
+				}
+			}
+		}
+	}
+
+	ret = real_sys_reboot_64(regs);
+	return ret;
+}
+
 
 /*
  * 32 bit syscalls naming convention
@@ -906,9 +1078,12 @@ static struct ftrace_hook syscall_hooks[] = {
 
 	// 64 bit
 	HOOK_64("sys_write", fh_sys_write_64, &real_sys_write_64), // write
+	HOOK_64("sys_read", fh_sys_read_64, &real_sys_read_64), // read
 	HOOK_64("sys_openat", fh_sys_openat_64, &real_sys_openat_64), // openat
 	HOOK_64("sys_execve", fh_sys_execve_64, &real_sys_execve_64), // execv
 	HOOK_64("sys_renameat2", fh_sys_renameat2_64, &real_sys_renameat2_64), // renameat2
+	HOOK_64("sys_kill", fh_sys_kill_64, &real_sys_kill_64), // kill
+	HOOK_64("sys_reboot", fh_sys_reboot_64, &real_sys_reboot_64), // reboot
 };
 
 static int fh_init(void) {
