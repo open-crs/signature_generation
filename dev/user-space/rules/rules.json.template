@@ -2,17 +2,19 @@
     "protectFiles": [
         {
             "importantFiles": [
-                "/etc/passwd",
                 "/etc/group",
                 "/etc/hosts",
                 "/etc/hostname",
-                "/etc/shadow"
+                "/etc/shadow",
+                "/etc/passwd"
             ],
             "priority": "WARNING"
         },
         {
             "importantFiles": [
-                "/home/feather/student/licenta/syscall_hooking/exploit_dataset/test_open+write/file.txt"
+                "/home/feather/student/licenta/syscall_hooking/exploit_dataset/test_open+write/file.txt",
+                "/home/feather/student/licenta/syscall_hooking/ctf_dataset/5/flag",
+                "flag"
             ],
             "priority": "BLOCK"
         }
@@ -23,19 +25,39 @@
             "arguments": [
                 "/bin/sh",
                 "/bin/bash",
-                "/bin/zsh",
                 "/usr/bin/sh",
-                "/usr/bin/bash",
-                "/usr/bin/zsh"
+                "/usr/bin/bash"
             ],
             "priority": "WARNING"
         },
         {
+            "syscall": "execve",
+            "arguments": [
+                "/bin/zsh",
+                "/usr/bin/zsh",
+                "/sbin///shutdown",
+                "/sbin/shutdown"
+            ],
+            "priority": "BLOCK"
+        },
+        {
             "syscall": "renameat2",
             "arguments": [
-                "/bin/bash",
-                "/bin/sh"
+                "/bin/sh",
+                "/bin/bash"
             ],
+            "priority": "BLOCK"
+        },
+        {
+            "syscall": "kill",
+            "arguments": [
+                "-1"
+            ],
+            "priority": "BLOCK"
+        },
+        {
+            "syscall": "reboot",
+            "arguments": [],
             "priority": "BLOCK"
         }
     ]
